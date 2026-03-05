@@ -36,8 +36,8 @@ class Gauge(QWidget):
         self.warning_threshold = warning_threshold
         self.critical_threshold = critical_threshold
         
-        # Visual settings
-        self.setMinimumSize(150, 150)
+        # Visual settings – no fixed minimum so parent layout controls sizing
+        self.setMinimumSize(60, 60)
         self.needle_color = QColor(255, 255, 255)
         
     def set_value(self, value):
