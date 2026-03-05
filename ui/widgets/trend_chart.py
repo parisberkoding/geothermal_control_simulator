@@ -187,7 +187,7 @@ class TemperatureChart(TrendChart):
 
 class FlowChart(TrendChart):
     """Specialized chart for flow rate"""
-    
+
     def __init__(self, parent=None):
         super().__init__(
             parent=parent,
@@ -198,6 +198,22 @@ class FlowChart(TrendChart):
             window_size=60,
             color=(100, 200, 255)
         )
+
+
+class HeatDutyChart(TrendChart):
+    """Specialized chart for total cascade heat duty (kW)."""
+
+    def __init__(self, parent=None):
+        super().__init__(
+            parent=parent,
+            title="Total Heat Duty",
+            unit="kW",
+            y_min=0,
+            y_max=3000,
+            window_size=60,
+            color=(255, 100, 200)
+        )
+
 
 # Test widget
 if __name__ == '__main__':
