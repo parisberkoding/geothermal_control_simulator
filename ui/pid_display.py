@@ -61,7 +61,7 @@ VALVE_Y   = 122    # valve symbol y on branch
 TI_Y      = 155    # TI instrument circle y
 BOX_TOP   = 182    # endpoint box top y
 BOX_W     = 104
-BOX_H     = 88
+BOX_H     = 96
 DRAIN_Y   = BOX_TOP + BOX_H + 18   # steam trap drain y
 
 
@@ -237,11 +237,11 @@ class PIDDisplay(QWidget):
         t1 = self.scene.addText(tag)
         t1.setDefaultTextColor(color)
         t1.setFont(QFont("Arial", 6, QFont.Bold))
-        t1.setPos(x - 10, y - 14)
+        t1.setPos(x - 8, y - 13)
         t2 = self.scene.addText(num)
         t2.setDefaultTextColor(color.lighter(140))
         t2.setFont(QFont("Arial", 5))
-        t2.setPos(x - 5, y)
+        t2.setPos(x - 5, y + 2)
 
     # ── strainer ───────────────────────────────────────────────────────────────
 
@@ -258,7 +258,7 @@ class PIDDisplay(QWidget):
         lbl = self.scene.addText("Strainer")
         lbl.setDefaultTextColor(QColor(150, 150, 150))
         lbl.setFont(QFont("Arial", 6))
-        lbl.setPos(x - 18, y + 14)
+        lbl.setPos(x - 18, y + 18)
 
     # ── rupture disc + drain ───────────────────────────────────────────────────
 
@@ -317,7 +317,7 @@ class PIDDisplay(QWidget):
         pl = s.addText('1"')
         pl.setDefaultTextColor(QColor(70, 95, 130))
         pl.setFont(QFont("Arial", 5))
-        pl.setPos(bx + 3, HEADER_Y + 6)
+        pl.setPos(bx + 10, HEADER_Y + 6)
 
         # Valve
         self._draw_branch_valve(bx, VALVE_Y, sid)
@@ -347,18 +347,19 @@ class PIDDisplay(QWidget):
 
     def _draw_ti_circle(self, x, y, sid):
         """TI (Temperature Indicator) instrument circle on branch."""
-        r = 13
+        r = 14
         self.scene.addEllipse(x - r, y - r, r * 2, r * 2,
                               QPen(QColor(75, 200, 140), 1.5),
                               QBrush(QColor(18, 34, 28)))
+        self.scene.addLine(x - r, y, x + r, y, QPen(QColor(75, 200, 140), 0.8))
         tag = self.scene.addText("TI")
         tag.setDefaultTextColor(QColor(75, 200, 140))
         tag.setFont(QFont("Arial", 5, QFont.Bold))
-        tag.setPos(x - 8, y - 12)
+        tag.setPos(x - 6, y - 11)
         val = self.scene.addText("—°C")
         val.setDefaultTextColor(QColor(170, 255, 210))
         val.setFont(QFont("Arial", 5))
-        val.setPos(x - 10, y - 1)
+        val.setPos(x - 12, y + 2)
         self._ti_val_labels[sid] = val
 
     def _draw_endpoint_box(self, cx, top_y, sid, name):
@@ -376,31 +377,31 @@ class PIDDisplay(QWidget):
         n = s.addText(name)
         n.setDefaultTextColor(QColor(195, 215, 255))
         n.setFont(QFont("Arial", 7, QFont.Bold))
-        n.setPos(bx + 4, top_y + 2)
+        n.setPos(bx + 4, top_y + 3)
 
         # T-in→T-out label
         tl = s.addText("—→—°C")
         tl.setDefaultTextColor(QColor(255, 220, 80))
-        tl.setFont(QFont("Courier New", 7))
-        tl.setPos(bx + 4, top_y + 28)
+        tl.setFont(QFont("Courier New", 6))
+        tl.setPos(bx + 4, top_y + 32)
         self._box_temp_labels[sid] = tl
 
         # Heat duty
         hl = s.addText("— kW")
         hl.setDefaultTextColor(QColor(255, 165, 55))
         hl.setFont(QFont("Arial", 7))
-        hl.setPos(bx + 4, top_y + 45)
+        hl.setPos(bx + 4, top_y + 50)
         self._heat_labels[sid] = hl
 
         # Efficiency
         el = s.addText("eff —%")
         el.setDefaultTextColor(QColor(130, 195, 255))
         el.setFont(QFont("Arial", 6))
-        el.setPos(bx + 4, top_y + 62)
+        el.setPos(bx + 4, top_y + 68)
         self._eff_labels[sid] = el
 
         # Status dot (lower-right corner)
-        dot = s.addEllipse(bx + BOX_W - 16, top_y + BOX_H - 16, 12, 12,
+        dot = s.addEllipse(bx + BOX_W - 16, top_y + BOX_H - 14, 12, 12,
                            QPen(QColor(160, 160, 160), 1),
                            QBrush(QColor(0, 200, 80)))
         self._sensor_dots[sid] = dot
