@@ -130,7 +130,7 @@ class CascadePIDManager:
         'food_dehydrator_1': 50.0,
         'fish_pond':         29.0,
         'food_dehydrator_2': 50.0,
-        'green_house':       27.0,
+        'green_house':       24.5,   
     }
 
     def __init__(self):

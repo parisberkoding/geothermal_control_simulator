@@ -34,7 +34,9 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 
 from ui.pid_display import PIDDisplay
-from ui.endpoint_views import make_endpoint_view
+
+# Tambah ini:
+from ui.widgets.endpoint_with_chart import EndpointWithChart
 from ui.widgets.gauge import Gauge
 from ui.widgets.valve_knob import ValveKnob
 from ui.widgets.trend_chart import PressureChart, TemperatureChart, FlowChart, HeatDutyChart
@@ -417,15 +419,16 @@ class MainWindow(QMainWindow):
         layout.setSpacing(0)
 
         lbl = QLabel(
-            "Individual endpoint P&IDs — based on actual process drawings.  "
-            "Live data updates every 100 ms.")
+            "Individual endpoint P&IDs with live trend charts.  "
+            "Top: process diagram  |  Bottom: real-time analytics  |  Updates every 100 ms.")
         lbl.setStyleSheet("color:#556677; font-size:8pt; padding:2px 0 4px 0;")
         layout.addWidget(lbl)
 
         sub_tabs = QTabWidget()
         for sid, tab_name in _ENDPOINT_TABS:
-            view = make_endpoint_view(sid)
-            self._endpoint_views[sid] = view
+            display_name = dict(_VALVE_ORDER).get(sid, tab_name)
+            view = EndpointWithChart(sid, display_name)
+            self._endpoint_views[sid] = view          # simpan referensi
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setWidget(view)
@@ -434,8 +437,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(sub_tabs)
         container.setLayout(layout)
         return container
-
-    # ── Tab 3 – Valve Controls ─────────────────────────────────────────────────
+     # ── Tab 3 – Valve Controls ─────────────────────────────────────────────────
 
     def _build_controls_tab(self):
         scroll = QScrollArea()
@@ -612,41 +614,54 @@ class MainWindow(QMainWindow):
         return scroll
 
     # ── Tab 5 – Analytics ──────────────────────────────────────────────────────
-
     def _build_analytics_tab(self):
+        """Tab 5: Analytics — system level only (per-unit sudah di Endpoint tab)."""
         container = QWidget()
-        layout = QGridLayout()
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(6)
+        root_layout = QVBoxLayout()
+        root_layout.setContentsMargins(4, 4, 4, 4)
+        root_layout.setSpacing(4)
+
+        info = QLabel(
+            "System-level analytics.  "
+            "Per-unit trend charts are available in the  🏭 Endpoint P&IDs  tab.")
+        info.setStyleSheet("color:#556677; font-size:8pt; padding:2px;")
+        root_layout.addWidget(info)
+
+        sys_grp = QGroupBox("System Overview")
+        sys_grid = QGridLayout()
+        sys_grid.setContentsMargins(4, 4, 4, 4)
+        sys_grid.setSpacing(6)
 
         self.pressure_chart  = PressureChart()
         self.temp_chart      = TemperatureChart()
         self.flow_chart      = FlowChart()
         self.heat_duty_chart = HeatDutyChart()
 
-        charts = [
-            (self.pressure_chart,  'Pressure (bar)',   0, 0),
-            (self.temp_chart,      'Temperature (°C)', 0, 1),
-            (self.flow_chart,      'Flow Rate (kg/h)', 1, 0),
-            (self.heat_duty_chart, 'Heat Duty (kW)',   1, 1),
-        ]
-        for chart, title, row, col in charts:
-            wrapper = QWidget()
+        for chart, title, row, col in [
+            (self.pressure_chart,  "Source Pressure (bar)",     0, 0),
+            (self.temp_chart,      "Source Temperature (degC)",  0, 1),
+            (self.flow_chart,      "Source Flow (kg/h)",         1, 0),
+            (self.heat_duty_chart, "Total Heat Duty (kW)",       1, 1),
+        ]:
+            w = QWidget()
             wl = QVBoxLayout()
             wl.setContentsMargins(0, 0, 0, 0)
             wl.setSpacing(2)
-            t = QLabel(title)
-            t.setStyleSheet(
-                'color:#7799aa; font-size:9pt; font-weight:bold; padding:2px 4px;')
+            tl = QLabel(title)
+            tl.setStyleSheet(
+                "color:#6688aa; font-size:8pt; font-weight:bold; padding:1px 4px;")
             chart.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            wl.addWidget(t)
+            wl.addWidget(tl)
             wl.addWidget(chart)
-            wrapper.setLayout(wl)
-            layout.addWidget(wrapper, row, col)
-            layout.setRowStretch(row, 1)
-            layout.setColumnStretch(col, 1)
+            w.setLayout(wl)
+            sys_grid.addWidget(w, row, col)
+            sys_grid.setRowStretch(row, 1)
+            sys_grid.setColumnStretch(col, 1)
 
-        container.setLayout(layout)
+        sys_grp.setLayout(sys_grid)
+        root_layout.addWidget(sys_grp, stretch=1)
+
+        container.setLayout(root_layout)
         return container
 
     # ── Tab 6 – Index Panel ────────────────────────────────────────────────────
@@ -911,9 +926,9 @@ class MainWindow(QMainWindow):
 
             # Endpoint P&ID views
             if sid in self._endpoint_views:
-                ep_data          = dict(data)
+                ep_data = dict(data)
                 ep_data['valve_pos'] = pos
-                self._endpoint_views[sid].update_data(ep_data)
+                self._endpoint_views[sid].update_data(ep_data, valve_pos=pos)
 
             # HX widgets
             if sid in self._hx_widgets:

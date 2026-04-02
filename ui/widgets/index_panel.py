@@ -14,6 +14,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QColor
+from ui.widgets.gauge import Gauge  # ✅ Present
+from ui.widgets.valve_knob import ValveKnob  # ✅ Present
 
 # ── Index definitions ──────────────────────────────────────────────────────────
 # (tag, description, unit, data_key, normal_min, normal_max)
@@ -99,14 +101,15 @@ INDEX_DEFINITIONS: list[tuple] = [
     ('E-61', 'Food Dehy 2 – Pressure Drop',    'bar','food_dehydrator_2_dp',      0.0,  1.0),
     ('E-62', 'Food Dehy 2 – Sensor Status',    '—',  'food_dehydrator_2_status', None,None),
 
-    # ── Greenhouse – HX-07 (E-63 … E-69) ──────────────────────────────────────
-    ('E-63', 'Greenhouse – HX-07 Inlet Temp',  '°C', 'green_house_t_in',   24.0,  32.0),
-    ('E-64', 'Greenhouse – HX-07 Outlet Temp', '°C', 'green_house_t_out',  20.0,  28.0),
-    ('E-65', 'Greenhouse – Valve Position',    '%',  'green_house_valve',    0.0, 100.0),
-    ('E-66', 'Greenhouse – Heat Duty',         'kW', 'green_house_heat',     0.0, 250.0),
-    ('E-67', 'Greenhouse – Thermal Efficiency','%',  'green_house_eff',      0.0, 100.0),
-    ('E-68', 'Greenhouse – Pressure Drop',     'bar','green_house_dp',       0.0,   1.0),
-    ('E-69', 'Greenhouse – Sensor Status',     '—',  'green_house_status', None,  None),
+   # Add these to INDEX_DEFINITIONS in index_panel.py
+# Greenhouse specific entries (E-63 to E-69)
+('E-63', 'Greenhouse – HX-07 Inlet Temp',  '°C', 'green_house_t_in',   24.0,  32.0),
+('E-64', 'Greenhouse – HX-07 Outlet Temp', '°C', 'green_house_t_out',  20.0,  28.0), 
+('E-65', 'Greenhouse – Valve Position',    '%',  'green_house_valve',    0.0, 100.0),
+('E-66', 'Greenhouse – Heat Duty',         'kW', 'green_house_heat',     0.0, 250.0),
+('E-67', 'Greenhouse – Thermal Efficiency','%','green_house_eff',      0.0, 100.0),
+('E-68', 'Greenhouse – Pressure Drop',     'bar','green_house_dp',       0.0,   1.0),
+('E-69', 'Greenhouse – Sensor Status',     '—',  'green_house_status', None,  None),
 
     # ── Geochemistry (E-70 … E-79) ─────────────────────────────────────────────
     ('E-70', 'Fluid pH',                        '—',  'geo_ph',              5.5,   7.5),
