@@ -1,9 +1,15 @@
 """
 Steam Properties Calculator
-Using CoolProp for accurate thermodynamic calculations
+Uses CoolProp when available; falls back to safe defaults otherwise.
 """
-from CoolProp.CoolProp import PropsSI
 import logging
+
+try:
+    from CoolProp.CoolProp import PropsSI
+    _COOLPROP_AVAILABLE = True
+except ImportError:
+    _COOLPROP_AVAILABLE = False
+    PropsSI = None
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +28,15 @@ class SteamProperties:
             Temperature in Celsius
         """
         try:
+            if not _COOLPROP_AVAILABLE:
+                raise RuntimeError("CoolProp not installed")
             pressure_pa = pressure_bar * 1e5  # Convert bar to Pascal
             temp_k = PropsSI('T', 'P', pressure_pa, 'Q', 1, 'Water')
             temp_c = temp_k - 273.15
             return temp_c
         except Exception as e:
-            logger.error(f"Error calculating saturation temperature: {e}")
-            return 174.0  # Default fallback
+            logger.debug(f"Saturation temperature fallback: {e}")
+            return 170.9  # Default fallback — Well DP-6 design temperature
     
     @staticmethod
     def get_enthalpy(pressure_bar, temperature_c):
@@ -43,13 +51,15 @@ class SteamProperties:
             Enthalpy in kJ/kg
         """
         try:
+            if not _COOLPROP_AVAILABLE:
+                raise RuntimeError("CoolProp not installed")
             pressure_pa = pressure_bar * 1e5
             temp_k = temperature_c + 273.15
             enthalpy_j = PropsSI('H', 'P', pressure_pa, 'T', temp_k, 'Water')
             enthalpy_kj = enthalpy_j / 1000.0
             return enthalpy_kj
         except Exception as e:
-            logger.error(f"Error calculating enthalpy: {e}")
+            logger.debug(f"Enthalpy fallback: {e}")
             return 2800.0  # Default fallback
     
     @staticmethod
@@ -65,12 +75,14 @@ class SteamProperties:
             Density in kg/m³
         """
         try:
+            if not _COOLPROP_AVAILABLE:
+                raise RuntimeError("CoolProp not installed")
             pressure_pa = pressure_bar * 1e5
             temp_k = temperature_c + 273.15
             density = PropsSI('D', 'P', pressure_pa, 'T', temp_k, 'Water')
             return density
         except Exception as e:
-            logger.error(f"Error calculating density: {e}")
+            logger.debug(f"Density fallback: {e}")
             return 4.0  # Default fallback
     
     @staticmethod

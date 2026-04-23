@@ -109,7 +109,9 @@ class HeatExchangerWidget(QWidget):
                     scheme_id: str = 'scada') -> None:
         self._inlet_temp   = sensor.get('inlet_temp',   0.0)
         self._outlet_temp  = sensor.get('outlet_temp',  0.0)
-        self._process_temp = sensor.get('process_temp', self._outlet_temp * 0.8)
+        # 'process_outlet' is the key used by endpoints.py; 'process_temp' is a legacy alias
+        self._process_temp = sensor.get('process_outlet',
+                             sensor.get('process_temp', self._outlet_temp * 0.8))
         self._heat_kw      = sensor.get('heat_duty_kw', 0.0)
         self._efficiency   = sensor.get('efficiency',   0.0)
         self._status       = sensor.get('status',       'Normal')

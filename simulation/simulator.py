@@ -92,3 +92,7 @@ class GeothermalSimulator:
 
     def toggle_auto_control(self, enabled: bool):
         self.valve_controller.auto_control_enabled = enabled
+
+    def set_mode(self, mode: str) -> None:
+        """Switch cascade physics mode: 'scada' (tight, ±1.5°C) or 'sequential' (loose, ±5°C)."""
+        self.cascade_manager.set_mode(mode)

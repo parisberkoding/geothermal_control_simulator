@@ -235,7 +235,7 @@ class MainWindow(QMainWindow):
             setattr(self, attr_name, val)
             return wrapper
 
-        layout.addWidget(_readout('PRESS', '_hdr_pressure',    'bar',  '#00e8ff'))
+        layout.addWidget(_readout('PRESS', '_hdr_pressure',    'MPa',  '#00e8ff'))
         layout.addWidget(_readout('TEMP',  '_hdr_temperature', '°C',   '#ff9040'))
         layout.addWidget(_readout('FLOW',  '_hdr_flow',        'kg/h', '#40ff90'))
         layout.addWidget(_readout('HEAT',  '_hdr_heat',        'kW',   '#ffd040'))
@@ -274,14 +274,14 @@ class MainWindow(QMainWindow):
 
         self.pressure_gauge = Gauge(
             min_value=0, max_value=15,
-            unit='bar', label='Pressure',
-            warning_threshold=10, critical_threshold=12)
-        self.pressure_gauge.set_value(8.0)
+            unit='MPa', label='Pressure',
+            warning_threshold=10.5, critical_threshold=12.0)
+        self.pressure_gauge.set_value(8.1)
 
         self.temp_gauge = Gauge(
             min_value=150, max_value=200,
             unit='°C', label='Temp')
-        self.temp_gauge.set_value(174.0)
+        self.temp_gauge.set_value(170.9)
 
         for g in (self.pressure_gauge, self.temp_gauge):
             g.setMinimumSize(86, 86)
@@ -291,7 +291,7 @@ class MainWindow(QMainWindow):
 
         sg.addLayout(gauges_row)
 
-        self._flow_lbl = QLabel('Flow: 3374 kg/h')
+        self._flow_lbl = QLabel('Flow: 3403 kg/h')
         self._flow_lbl.setAlignment(Qt.AlignCenter)
         self._flow_lbl.setStyleSheet(
             'color:#aaeeff; font-size:10pt; font-weight:bold;')
@@ -499,13 +499,13 @@ class MainWindow(QMainWindow):
         nl.setStyleSheet('color:white; font-size:9pt; font-weight:bold;')
         rl.addWidget(nl)
 
-        # Slider with unit temp range
+        # Slider with unit temp range — defaults match optimal valve positions
         t_min, t_max = UNIT_LIMITS.get(sid, (20, 100))
         default_pos  = {
-            'tea_dryer': 85.0, 'food_dehydrator_1': 80.0,
-            'cabin': 75.0, 'hot_pool': 70.0,
-            'fish_pond': 65.0, 'green_house': 60.0,
-        }.get(sid, 70.0)
+            'tea_dryer': 100.0, 'food_dehydrator_1': 100.0,
+            'cabin': 30.0, 'hot_pool': 100.0,
+            'fish_pond': 15.0, 'green_house': 15.0,
+        }.get(sid, 50.0)
         knob = ValveKnob(label='', initial_value=default_pos,
                          temp_range=(t_min, t_max))
         knob.setFixedSize(268, 58)
@@ -803,6 +803,13 @@ class MainWindow(QMainWindow):
         self._hdr_title.setStyleSheet(
             f"color:{theme['text_primary']}; font-size:10pt; "
             f"font-weight:bold; letter-spacing:1px;")
+
+        # Switch simulation physics mode:
+        # Full SCADA → tight control (p=0.03, ±1.5°C fluctuation, ~88% efficiency)
+        # Full IoT / Hybrid → loose control (p=0.18, ±5°C fluctuation, ~72% efficiency)
+        if self.simulator:
+            sim_mode = 'scada' if scheme_id == 'scada' else 'sequential'
+            self.simulator.set_mode(sim_mode)
 
         # Update index panel theme
         if hasattr(self, '_index_panel'):
