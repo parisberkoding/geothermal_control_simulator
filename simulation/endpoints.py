@@ -8,16 +8,33 @@ import random
 WATER_CP = 4.186   # kJ/(kg·C)  -- liquid water / condensate
 STEAM_CP = 2.010   # kJ/(kg·C)  -- superheated steam
 
-# Updated cascade definition with accurate temperature requirements
+# [ADDED] Wellhead temperature safety limits
+WELLHEAD_SAFETY_CLAMP = 160.0   # °C — emergency override when main_temp > 170°C
+WELLHEAD_NORMAL_MAX   = 140.0   # °C — maximum allowed from wellhead under normal operation
+T_AMBIENT             = 20.0    # °C — environment temperature used for heat-loss calculation
+
+# [ADDED] Physical temperature limits per unit (°C) — enforced strictly each timestep
+UNIT_LIMITS: dict = {
+    'tea_dryer':         (95,  98),
+    'food_dehydrator_1': (53,  56),
+    'food_dehydrator_2': (53,  56),
+    'cabin':             (26,  38),
+    'hot_pool':          (27,  38),
+    'fish_pond':         (24,  30),
+    'green_house':       (21,  26),
+}
+
+# [MODIFIED] Cascade ordered high-T → low-T so each stage receives sufficient
+# inlet temperature from upstream.  Serial chain: outlet_N → inlet_(N+1).
 CASCADE_STAGES = [
     # (id, name, base_demand_kg/h, target_T_in_dari_header, target_T_out_process)
-    ('cabin',             'Cabin Warmer',      400, 162, 45),
-    ('hot_pool',          'Hot Pool',           800, 162, 38),
-    ('tea_dryer',         'Tea Dryer',          500, 162, 96),
-    ('food_dehydrator_1', 'Food Dehydrator 1',  600, 162, 54),
-    ('fish_pond',         'Fish Pond',          374, 162, 27),
-    ('food_dehydrator_2', 'Food Dehydrator 2',  450, 162, 54),
-    ('green_house',       'Green House',        300, 162, 23),
+    ('tea_dryer',         'Tea Dryer',          500, 140, 96),
+    ('food_dehydrator_1', 'Food Dehydrator 1',  600,  96, 54),
+    ('food_dehydrator_2', 'Food Dehydrator 2',  450,  54, 54),
+    ('cabin',             'Cabin Warmer',        400,  54, 32),
+    ('hot_pool',          'Hot Pool',            800,  32, 30),
+    ('fish_pond',         'Fish Pond',           374,  30, 27),
+    ('green_house',       'Green House',         300,  27, 23),
 ]
 
 # Pipe diameter per branch (meters)
@@ -83,6 +100,10 @@ class CascadeStage:
         self._demand_timer     = 0.0
         self._demand_hold_time = random.uniform(15, 30)
 
+        # [ADDED] Thermal inertia and safety state
+        self._tau             = 30.0   # thermal time constant (seconds)
+        self._safety_override = False  # True when T was clamped to unit limit
+
     def update(self, dt: float, valve_position: float,
             inlet_temperature: float, available_flow: float):
         """
@@ -103,36 +124,40 @@ class CascadeStage:
         self.flow_rate_kg_h = (valve_position / 100.0) * available_flow
         self.inlet_temp     = inlet_temperature
 
-        if self.flow_rate_kg_h > 0.5 and inlet_temperature > 20:
-            # Max possible temperature drop down to process requirement
-            max_dt_possible = max(0.1, inlet_temperature - self.t_process_req)
+        if self.flow_rate_kg_h > 0.5 and inlet_temperature > T_AMBIENT:
+            # [MODIFIED] Thermal model: T_out proportional to valve (flow) fraction
+            flow_effect = valve_position / 100.0
+            T_raw = inlet_temperature * flow_effect
 
-            # Actual drop scaled by demand ratio and valve position
-            demand_ratio = min(1.1, self.current_demand / max(1.0, self.flow_rate_kg_h))
-            valve_frac   = valve_position / 100.0
-            actual_dt    = max_dt_possible * min(1.0, demand_ratio) * min(1.0, valve_frac + 0.05)
-            actual_dt    = max(0.5, actual_dt)
+            # [ADDED] Heat loss to environment (proportional to temperature excess)
+            heat_loss = 0.003 * max(0.0, T_raw - T_AMBIENT) * dt
+            T_raw = max(T_AMBIENT, T_raw - heat_loss)
 
-            # Outlet temperature
-            self.outlet_temp = max(self.t_process_req + 2.0,
-                                inlet_temperature - actual_dt)
-            self.outlet_temp = min(self.outlet_temp, inlet_temperature - 0.5)
+            # [ADDED] Thermal inertia — exponential filter prevents instantaneous jumps
+            alpha = dt / (self._tau + dt)
+            T_filtered = self.outlet_temp + alpha * (T_raw - self.outlet_temp)
 
-            # Process outlet temperature (with slight random deviation)
+            # [ADDED] Enforce unit temperature limits (fail-safe clamp)
+            unit_min, unit_max = UNIT_LIMITS.get(self.stage_id, (T_AMBIENT, 100.0))
+            self._safety_override = T_filtered > unit_max or T_filtered < unit_min
+            self.outlet_temp = max(unit_min, min(unit_max, T_filtered))
+
+            # Process outlet temperature (with slight random deviation, within limits)
             process_deviation   = random.uniform(-1.5, 1.5)
-            self.process_outlet = max(self.t_process_req - 2.0,
-                                    min(self.t_process_req + 5.0,
+            self.process_outlet = max(unit_min,
+                                    min(unit_max,
                                         self.t_process_req + process_deviation))
 
             # Heat duty: Q = m_dot * Cp * dT  (kW)
-            m_dot_kg_s        = self.flow_rate_kg_h / 3600.0
-            actual_dt_real    = inlet_temperature - self.outlet_temp
+            m_dot_kg_s     = self.flow_rate_kg_h / 3600.0
+            actual_dt_real = max(0.0, inlet_temperature - self.outlet_temp)
             self.heat_duty_kw = m_dot_kg_s * WATER_CP * actual_dt_real * 1000.0
 
             # Pressure drop via Darcy-Weisbach
             self.pressure_drop = _darcy_pressure_drop(self.flow_rate_kg_h, BRANCH_PIPE_D)
 
             # Thermal efficiency vs max possible extraction
+            max_dt_possible = max(0.1, inlet_temperature - self.t_process_req)
             q_max = m_dot_kg_s * WATER_CP * max_dt_possible * 1000.0
             self.efficiency = min(100.0, self.heat_duty_kw / max(1.0, q_max) * 100.0)
 
@@ -148,6 +173,7 @@ class CascadeStage:
             self.pressure_drop  = 0.0
             self.efficiency     = 0.0
             self.flow_velocity  = 0.0
+            self._safety_override = False
 
         self._update_sensor_status()
 
@@ -217,7 +243,11 @@ class CascadeManager:
         outlet temperature stage N menjadi inlet temperature stage N+1.
         Flow berkurang sedikit tiap stage (konsumsi kondensat).
         """
-        current_temp = main_temp
+        # [ADDED] Wellhead safety clamp before cascade entry
+        if main_temp > 170.0:
+            current_temp = WELLHEAD_SAFETY_CLAMP   # emergency override at 160°C
+        else:
+            current_temp = min(main_temp, WELLHEAD_NORMAL_MAX)  # normal cap at 140°C
         current_flow = main_flow
 
         for sid in self.stage_order:
@@ -267,6 +297,7 @@ class CascadeManager:
             'pressure_drop':          s.pressure_drop,
             'efficiency':             s.efficiency,
             'flow_velocity':          s.flow_velocity,
+            'safety_override':        s._safety_override,  # [ADDED] fail-safe clamp flag
             }
             for sid, s in self.stages.items()
         }

@@ -33,9 +33,10 @@ class PIDController:
         self.output_min = output_min
         self.output_max = output_max
 
-        self._integral:    float = 0.0
-        self._prev_error:  float = 0.0
-        self._initialized: bool  = False
+        self._integral:          float = 0.0
+        self._prev_error:        float = 0.0
+        self._initialized:       bool  = False
+        self._prev_measurement:  float = 0.0   # [ADDED] for derivative-on-measurement
 
     # ── public API ─────────────────────────────────────────────────────────────
 
@@ -59,29 +60,38 @@ class PIDController:
         # Proportional
         p_term = self.kp * error
 
-        # Integral with anti-windup clamping
+        # Integral
         self._integral += error * dt
-        max_i = (self.output_max - self.output_min) / max(abs(self.ki), 1e-10)
-        self._integral = max(-max_i, min(max_i, self._integral))
         i_term = self.ki * self._integral
 
-        # Derivative (skip on first call to avoid derivative kick)
+        # [MODIFIED] Derivative on measurement — avoids kick on setpoint change
         if self._initialized:
-            d_term = self.kd * (error - self._prev_error) / dt
+            d_term = -self.kd * (measured_value - self._prev_measurement) / dt
         else:
             d_term = 0.0
             self._initialized = True
 
-        self._prev_error = error
+        self._prev_error       = error
+        self._prev_measurement = measured_value   # [ADDED]
 
-        output = p_term + i_term + d_term
-        return max(self.output_min, min(self.output_max, output))
+        # Raw output
+        output_raw = p_term + i_term + d_term
+
+        # Saturate output
+        output_sat = max(self.output_min, min(self.output_max, output_raw))
+
+        # [ADDED] Anti-windup back-calculation: undo integral overshoot when saturated
+        if abs(self.ki) > 1e-10:
+            self._integral -= (output_raw - output_sat) / self.ki
+
+        return output_sat
 
     def reset(self) -> None:
         """Reset integrator and derivative history."""
-        self._integral    = 0.0
-        self._prev_error  = 0.0
-        self._initialized = False
+        self._integral         = 0.0
+        self._prev_error       = 0.0
+        self._prev_measurement = 0.0   # [ADDED]
+        self._initialized      = False
 
     # ── properties ─────────────────────────────────────────────────────────────
 
@@ -124,8 +134,8 @@ class CascadePIDManager:
 
     # Default outlet temperature setpoints  (°C)
     _SETPOINTS: dict = {
-        'cabin':             45.0,   # ~45°C estimated
-        'hot_pool':          38.0,   # ~38°C estimated
+        'cabin':             32.0,   # [MODIFIED] 26-38°C range; 45°C exceeded unit limit
+        'hot_pool':          30.0,   # [MODIFIED] 27-38°C range; achievable after cabin stage
         'tea_dryer':         96.0,   # 95-98°C
         'food_dehydrator_1': 54.0,   # 53-56°C
         'fish_pond':         27.0,   # 24-30°C
