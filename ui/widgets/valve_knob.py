@@ -1,11 +1,83 @@
 """
 Valve Knob Widget
 Rotary knob control for valve position (0-100%)
+Also provides ValveSlider — a horizontal range-picker replacement.
 """
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QSlider
 from PyQt5.QtCore import Qt, pyqtSignal, QPointF
 from PyQt5.QtGui import QPainter, QColor, QPen, QFont, QBrush
 import math
+
+
+# ── Horizontal slider replacement for the rotary knob ─────────────────────────
+
+class ValveSlider(QWidget):
+    """
+    Horizontal range-picker for valve position (0–100 %).
+    Drop-in replacement for ValveKnob in the Valve Controls tab.
+
+    Programmatic set_value() does NOT emit valueChanged — only user
+    interaction triggers the signal, preventing feedback loops with
+    the auto-control update loop.
+    """
+    valueChanged = pyqtSignal(float)
+
+    _STYLE = """
+        QSlider::groove:horizontal {
+            background: #1a3040;
+            height: 8px;
+            border-radius: 4px;
+            border: 1px solid #2a4a60;
+        }
+        QSlider::handle:horizontal {
+            background: #00ccff;
+            width: 18px; height: 18px;
+            margin: -5px 0;
+            border-radius: 9px;
+            border: 2px solid #007799;
+        }
+        QSlider::handle:horizontal:hover { background: #33ddff; }
+        QSlider::sub-page:horizontal {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #004466, stop:1 #0099cc);
+            border-radius: 4px;
+        }
+    """
+
+    def __init__(self, parent=None, initial_value: float = 50.0):
+        super().__init__(parent)
+        self._value = max(0.0, min(100.0, float(initial_value)))
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 4, 0, 0)
+        layout.setSpacing(0)
+
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setRange(0, 100)
+        self.slider.setValue(int(self._value))
+        self.slider.setTickPosition(QSlider.TicksBelow)
+        self.slider.setTickInterval(25)
+        self.slider.setStyleSheet(self._STYLE)
+        self.slider.valueChanged.connect(self._on_value_changed)
+
+        layout.addWidget(self.slider)
+        self.setLayout(layout)
+
+    def _on_value_changed(self, v: int) -> None:
+        self._value = float(v)
+        self.valueChanged.emit(self._value)
+
+    def set_value(self, value: float) -> None:
+        """Update display without emitting valueChanged (auto-control path)."""
+        new_val = max(0.0, min(100.0, float(value)))
+        if abs(new_val - self._value) > 0.49:
+            self._value = new_val
+            self.slider.blockSignals(True)
+            self.slider.setValue(int(self._value))
+            self.slider.blockSignals(False)
+
+    def get_value(self) -> float:
+        return self._value
 
 class ValveKnob(QWidget):
     """

@@ -148,10 +148,10 @@ class CascadeStage:
                                     min(unit_max,
                                         self.t_process_req + process_deviation))
 
-            # Heat duty: Q = m_dot * Cp * dT  (kW)
+            # Heat duty: Q = m_dot[kg/s] * Cp[kJ/kg°C] * dT[°C] = kW  (no ×1000)
             m_dot_kg_s     = self.flow_rate_kg_h / 3600.0
             actual_dt_real = max(0.0, inlet_temperature - self.outlet_temp)
-            self.heat_duty_kw = m_dot_kg_s * WATER_CP * actual_dt_real * 1000.0
+            self.heat_duty_kw = m_dot_kg_s * WATER_CP * actual_dt_real
 
             # Pressure drop via Darcy-Weisbach
             self.pressure_drop = _darcy_pressure_drop(self.flow_rate_kg_h, BRANCH_PIPE_D)

@@ -38,15 +38,16 @@ class Valve:
 class ValveController:
     """Controls 7 cascade valves with pressure-based auto-control."""
 
-    # Default positions — higher for early stages (more heat extraction needed)
+    # Default positions — derived from midpoint of each unit's allowed T range
+    # via: valve% = T_out_mid / T_in_expected × 100
     _DEFAULTS: Dict[str, float] = {
-        'cabin':             70.0,
-        'hot_pool':          75.0,
-        'tea_dryer':         62.0,
-        'food_dehydrator_1': 65.0,
-        'fish_pond':         58.0,
-        'food_dehydrator_2': 60.0,
-        'green_house':       52.0,
+        'tea_dryer':         69.0,   # midpoint 96.5°C / 140°C × 100
+        'food_dehydrator_1': 57.0,   # midpoint 54.5°C /  96°C × 100
+        'food_dehydrator_2': 98.0,   # midpoint 54.5°C ≈ T_in → near-fully open
+        'cabin':             59.0,   # midpoint 32.0°C /  54°C × 100
+        'hot_pool':          95.0,   # midpoint 32.5°C > T_in  → capped (T_out ≈ 30°C)
+        'fish_pond':         90.0,   # midpoint 27.0°C /  30°C × 100
+        'green_house':       87.0,   # midpoint 23.5°C /  27°C × 100
     }
 
     def __init__(self):
