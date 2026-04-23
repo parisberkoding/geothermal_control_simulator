@@ -38,14 +38,17 @@ class Valve:
 class ValveController:
     """Controls 7 cascade valves with pressure-based auto-control."""
 
-    # Default positions tuned for each stage's heat-extraction requirement
+    # Default positions: optimal valve openings from thermodynamic calculations
+    # tea/food/hot_pool: 100% (need max flow for high heat demand)
+    # cabin: 30% (small demand, low flow sufficient)
+    # fish/greenhouse: 15% (minimal demand, small flow gives correct outlet temp)
     _DEFAULTS: Dict[str, float] = {
-        'tea_dryer':         85.0,
-        'food_dehydrator_1': 80.0,
-        'cabin':             75.0,
-        'hot_pool':          70.0,
-        'fish_pond':         65.0,
-        'green_house':       60.0,
+        'tea_dryer':         100.0,
+        'food_dehydrator_1': 100.0,
+        'cabin':              30.0,
+        'hot_pool':          100.0,
+        'fish_pond':          15.0,
+        'green_house':        15.0,
     }
 
     def __init__(self):
@@ -53,12 +56,12 @@ class ValveController:
 
         self.auto_control_enabled = True
 
-        # Pressure thresholds (bar)
-        self.pressure_critical_low  = 5.0
-        self.pressure_warning_low   = 6.0
+        # Pressure thresholds (MPa) — scaled for 8.1 MPa nominal system
+        self.pressure_critical_low  = 5.5
+        self.pressure_warning_low   = 6.5
         self.pressure_normal_low    = 7.0
-        self.pressure_normal_high   = 9.0
-        self.pressure_warning_high  = 10.0
+        self.pressure_normal_high   = 9.5
+        self.pressure_warning_high  = 10.5
         self.pressure_critical_high = 12.0
 
         self.last_action     = None

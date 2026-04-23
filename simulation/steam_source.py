@@ -26,10 +26,10 @@ class SteamSource:
     """
     
     def __init__(self):
-        # Base values from P&ID
-        self.base_pressure = 8.0      # bar
-        self.base_temperature = 174.0  # °C
-        self.base_flow = 3374.0        # kg/h
+        # Base values from P&ID / SCADA dashboard (Well DP-6)
+        self.base_pressure = 8.1       # MPa
+        self.base_temperature = 170.9  # °C
+        self.base_flow = 3403.0        # kg/h
         
         # Current values
         self.pressure = self.base_pressure
@@ -83,9 +83,9 @@ class SteamSource:
     def _update_normal(self, dt):
         """Normal operation with small random variations"""
         # Small random noise (±2%)
-        self.pressure_noise = random.uniform(-0.16, 0.16)  # ±2% of 8 bar
+        self.pressure_noise = random.uniform(-0.162, 0.162)  # ±2% of 8.1 MPa
         self.temp_noise = random.uniform(-3, 3)
-        self.flow_noise = random.uniform(-67, 67)  # ±2% of 3374
+        self.flow_noise = random.uniform(-68, 68)  # ±2% of 3403
         
         self.pressure = self.base_pressure + self.pressure_noise
         self.flow = self.base_flow + self.flow_noise
@@ -201,7 +201,7 @@ class SteamSource:
         
         # Check if stabilized
         if abs(self.pressure - self.base_pressure) < 0.2 and \
-           abs(self.flow - self.base_flow) < 50:
+           abs(self.flow - self.base_flow) < 100:
             # Back to normal
             self.state = SystemState.NORMAL
             self.state_timer = 0
@@ -216,11 +216,10 @@ class SteamSource:
         self.temperature = max(25, self.temperature - dt * 10)
     
     def _update_temperature(self):
-        """Update temperature based on pressure (steam table)"""
+        """Update temperature from base value + noise (Well DP-6 operates at ~170.9°C)."""
         if self.state != SystemState.EMERGENCY:
-            # Use saturation temperature + superheat
-            sat_temp = SteamProperties.get_saturation_temperature(self.pressure)
-            self.temperature = sat_temp + self.temp_noise
+            # Base temperature with small random fluctuation — independent of pressure unit
+            self.temperature = self.base_temperature + self.temp_noise
     
     def _lerp(self, a, b, t):
         """Linear interpolation"""
