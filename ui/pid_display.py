@@ -55,15 +55,14 @@ HEADER_Y = 70          # y garis header utama 2"
 PIPE_W   = 5
 BRANCH_W = 3
 
-# 7 branch — x positions, lebih lebar supaya tidak overlapping
+# 6 branches in cascade order (high-T → low-T), evenly spaced
 _BRANCHES = [
-    ('cabin',             'Cabin\nWarmer',    110),
-    ('hot_pool',          'Hot\nPool',        252),
-    ('tea_dryer',         'Tea\nDryer',       394),
-    ('food_dehydrator_1', 'Food\nDehy 1',     536),
-    ('fish_pond',         'Fish\nPond',       678),
-    ('food_dehydrator_2', 'Food\nDehy 2',     820),
-    ('green_house',       'Green\nHouse',     962),
+    ('tea_dryer',         'Tea\nDryer',       110),
+    ('food_dehydrator_1', 'Food\nDehy',       254),
+    ('cabin',             'Cabin\nHeating',   398),
+    ('hot_pool',          'Hot\nPool',        542),
+    ('fish_pond',         'Fish\nPond',       686),
+    ('green_house',       'Green\nHouse',     830),
 ]
 
 VALVE_Y      = HEADER_Y + 38    # valve di branch
@@ -252,9 +251,9 @@ class PIDDisplay(QWidget):
                   QPen(QColor(80, 120, 175), 1.5))
         # Label HE
         hx_lbl_map = {
-            'cabin': 'HX-01', 'hot_pool': 'HX-02', 'tea_dryer': 'HX-03',
-            'food_dehydrator_1': 'HX-04', 'fish_pond': 'HX-05',
-            'food_dehydrator_2': 'HX-06', 'green_house': 'HX-07',
+            'tea_dryer': 'HX-01', 'food_dehydrator_1': 'HX-02',
+            'cabin': 'HX-03', 'hot_pool': 'HX-04',
+            'fish_pond': 'HX-05', 'green_house': 'HX-06',
         }
         he_tag = s.addText(hx_lbl_map.get(sid, 'HE'))
         he_tag.setDefaultTextColor(QColor(140, 170, 210))

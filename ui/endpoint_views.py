@@ -860,11 +860,10 @@ class GreenHouseView(_EndpointBase):
 def make_endpoint_view(stage_id: str) -> _EndpointBase:
     """Return the appropriate P&ID view widget for a given stage ID."""
     mapping = {
-        'cabin':             CabinView,
-        'hot_pool':          HotPoolView,
         'tea_dryer':         TeaDryerView,
         'food_dehydrator_1': FoodDehydView,
-        'food_dehydrator_2': FoodDehydView,
+        'cabin':             CabinView,
+        'hot_pool':          HotPoolView,
         'fish_pond':         FishPondView,
         'green_house':       GreenHouseView,
     }
