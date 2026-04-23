@@ -45,40 +45,37 @@ from ui.widgets.unit_icon import make_unit_icon
 from ui.widgets.heat_exchanger import make_hx_widget
 from utils.logger import EventLogger, EventType
 from utils.theme_manager import get_theme, get_stylesheet, get_scheme_button_style
-from simulation.endpoints import CASCADE_STAGES
+from simulation.endpoints import CASCADE_STAGES, UNIT_LIMITS
 from simulation.scenarios import get_scenario
 
 # ── English display names for all stages ──────────────────────────────────────
 
 _VALVE_ORDER = [
-    ('cabin',             'Cabin Heating'),
-    ('hot_pool',          'Hot Pool'),
     ('tea_dryer',         'Tea Drying'),
     ('food_dehydrator_1', 'Food Dehydrator'),
+    ('cabin',             'Cabin Heating'),
+    ('hot_pool',          'Hot Pool'),
     ('fish_pond',         'Fish Pond'),
-    ('food_dehydrator_2', 'Food Dehydrator 2'),
     ('green_house',       'Greenhouse'),
 ]
 
 _ENDPOINT_TABS = [
-    ('cabin',             'Cabin'),
-    ('hot_pool',          'Hot Pool'),
     ('tea_dryer',         'Tea Drying'),
     ('food_dehydrator_1', 'Food Dehy'),
+    ('cabin',             'Cabin'),
+    ('hot_pool',          'Hot Pool'),
     ('fish_pond',         'Fish Pond'),
-    ('food_dehydrator_2', 'Food Dhy 2'),
     ('green_house',       'Greenhouse'),
 ]
 
-# HX tags mapped to stage IDs
+# HX tags mapped to stage IDs (cascade order)
 _HX_MAP = {
-    'cabin':             ('HX-01', 'Cabin Heating'),
-    'hot_pool':          ('HX-02', 'Hot Pool'),
-    'tea_dryer':         ('HX-03', 'Tea Drying'),
-    'food_dehydrator_1': ('HX-04', 'Food Dehydrator'),
+    'tea_dryer':         ('HX-01', 'Tea Drying'),
+    'food_dehydrator_1': ('HX-02', 'Food Dehydrator'),
+    'cabin':             ('HX-03', 'Cabin Heating'),
+    'hot_pool':          ('HX-04', 'Hot Pool'),
     'fish_pond':         ('HX-05', 'Fish Pond'),
-    'food_dehydrator_2': ('HX-06', 'Food Dehy 2'),
-    'green_house':       ('HX-07', 'Greenhouse'),
+    'green_house':       ('HX-06', 'Greenhouse'),
 }
 
 _STATUS_COLORS = {
@@ -453,7 +450,7 @@ class MainWindow(QMainWindow):
         hr  = QHBoxLayout()
         hr.setContentsMargins(0, 0, 0, 0)
         hr.setSpacing(4)
-        for txt, w in [('Valve', 72), ('Stage', 140), ('Pos', 46),
+        for txt, w in [('Stage', 140), ('Valve Opening  (range = unit process temp)', 270),
                        ('T-in → T-out', 112), ('Heat kW', 62),
                        ('Eff %', 48), ('ΔP bar', 52),
                        ('Status', 120), ('Auto', 55)]:
@@ -490,27 +487,31 @@ class MainWindow(QMainWindow):
 
     def _build_valve_row(self, sid: str, display_name: str):
         row = QWidget()
-        row.setFixedHeight(84)
+        row.setFixedHeight(72)
         rl  = QHBoxLayout()
-        rl.setContentsMargins(4, 3, 4, 3)
+        rl.setContentsMargins(4, 4, 4, 4)
         rl.setSpacing(4)
 
-        knob = ValveKnob(label='', initial_value=70.0)
-        knob.setFixedSize(72, 72)
-        knob.valueChanged.connect(lambda v, s=sid: self._on_valve_changed(s, v))
-        self.valve_knobs[sid] = knob
-        rl.addWidget(knob)
-
+        # Stage name label
         nl = QLabel(display_name)
         nl.setFixedWidth(138)
         nl.setWordWrap(True)
         nl.setStyleSheet('color:white; font-size:9pt; font-weight:bold;')
         rl.addWidget(nl)
 
-        pos_lbl = QLabel('70%')
-        pos_lbl.setFixedWidth(44)
-        pos_lbl.setAlignment(Qt.AlignCenter)
-        pos_lbl.setStyleSheet('color:#80ccff; font-size:9pt; font-weight:bold;')
+        # Slider with unit temp range
+        t_min, t_max = UNIT_LIMITS.get(sid, (20, 100))
+        default_pos  = {
+            'tea_dryer': 85.0, 'food_dehydrator_1': 80.0,
+            'cabin': 75.0, 'hot_pool': 70.0,
+            'fish_pond': 65.0, 'green_house': 60.0,
+        }.get(sid, 70.0)
+        knob = ValveKnob(label='', initial_value=default_pos,
+                         temp_range=(t_min, t_max))
+        knob.setFixedSize(268, 58)
+        knob.valueChanged.connect(lambda v, s=sid: self._on_valve_changed(s, v))
+        self.valve_knobs[sid] = knob
+        rl.addWidget(knob)
 
         t_lbl = QLabel('—→—')
         t_lbl.setFixedWidth(110)
@@ -544,12 +545,11 @@ class MainWindow(QMainWindow):
             lambda st, s=sid: self._on_auto_tune_changed(s, st))
         self.valve_auto_tune_cbs[sid] = at_cb
 
-        for w in [pos_lbl, t_lbl, heat_lbl, eff_lbl, dp_lbl, sensor_lbl, at_cb]:
+        for w in [t_lbl, heat_lbl, eff_lbl, dp_lbl, sensor_lbl, at_cb]:
             rl.addWidget(w)
         rl.addStretch()
 
         self._valve_param_labels[sid] = {
-            'pos':  pos_lbl,
             'temp': t_lbl,
             'heat': heat_lbl,
             'eff':  eff_lbl,
@@ -897,14 +897,15 @@ class MainWindow(QMainWindow):
             self.pid_display.update_valve_position(sid, pos)
             self.pid_display.update_sensor_status(sid, data['color'])
 
-            # Knob sync
+            # Slider sync (position + live process temperature)
             if sid in self.valve_knobs:
                 self.valve_knobs[sid].set_value(pos)
+                proc_temp = data.get('process_outlet', data.get('outlet_temp', 0.0))
+                self.valve_knobs[sid].set_process_temp(proc_temp)
 
             # Valve row labels
             if sid in self._valve_param_labels:
                 pl = self._valve_param_labels[sid]
-                pl['pos'].setText(f"{pos:.0f}%")
                 pl['temp'].setText(
                     f"{data['inlet_temp']:.0f}→{data['outlet_temp']:.0f}")
                 pl['heat'].setText(f"{data['heat_duty_kw']:.0f}")

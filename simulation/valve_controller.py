@@ -38,15 +38,14 @@ class Valve:
 class ValveController:
     """Controls 7 cascade valves with pressure-based auto-control."""
 
-    # Default positions — higher for early stages (more heat extraction needed)
+    # Default positions tuned for each stage's heat-extraction requirement
     _DEFAULTS: Dict[str, float] = {
-        'cabin':             70.0,
-        'hot_pool':          75.0,
-        'tea_dryer':         62.0,
-        'food_dehydrator_1': 65.0,
-        'fish_pond':         58.0,
-        'food_dehydrator_2': 60.0,
-        'green_house':       52.0,
+        'tea_dryer':         85.0,
+        'food_dehydrator_1': 80.0,
+        'cabin':             75.0,
+        'hot_pool':          70.0,
+        'fish_pond':         65.0,
+        'green_house':       60.0,
     }
 
     def __init__(self):
