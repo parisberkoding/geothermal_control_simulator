@@ -10,15 +10,14 @@ STEAM_CP = 2.010   # kJ/(kg·C)  -- superheated steam
 
 # Updated cascade definition with accurate temperature requirements
 CASCADE_STAGES = [
-    # (id, name, base_demand_kg/h, target_T_in, target_T_out)
-    # Suhu inlet = outlet stage sebelumnya (cascade serial)
-    ('cabin',             'Cabin Warmer',      400, 162, 130),
-    ('hot_pool',          'Hot Pool',           800, 130,  75),
-    ('tea_dryer',         'Tea Dryer',          500,  75,  60),
-    ('food_dehydrator_1', 'Food Dehydrator 1',  600,  60,  48),
-    ('fish_pond',         'Fish Pond',          374,  48,  36),
-    ('food_dehydrator_2', 'Food Dehydrator 2',  450,  36,  28),
-    ('green_house',       'Green House',        300,  28,  24),
+    # (id, name, base_demand_kg/h, target_T_in_dari_header, target_T_out_process)
+    ('cabin',             'Cabin Warmer',      400, 162, 45),
+    ('hot_pool',          'Hot Pool',           800, 162, 38),
+    ('tea_dryer',         'Tea Dryer',          500, 162, 96),
+    ('food_dehydrator_1', 'Food Dehydrator 1',  600, 162, 54),
+    ('fish_pond',         'Fish Pond',          374, 162, 27),
+    ('food_dehydrator_2', 'Food Dehydrator 2',  450, 162, 54),
+    ('green_house',       'Green House',        300, 162, 23),
 ]
 
 # Pipe diameter per branch (meters)
@@ -85,13 +84,13 @@ class CascadeStage:
         self._demand_hold_time = random.uniform(15, 30)
 
     def update(self, dt: float, valve_position: float,
-               inlet_temperature: float, available_flow: float):
+            inlet_temperature: float, available_flow: float):
         """
         Args:
             dt               : delta-time (seconds)
             valve_position   : 0-100 %
-            inlet_temperature: suhu fluida masuk stage ini (degC)
-            available_flow   : flow tersedia di inlet stage ini (kg/h)
+            inlet_temperature: suhu fluida masuk dari header (degC)
+            available_flow   : flow yang dialokasikan ke stage ini (kg/h)
         """
         # Vary demand slowly every 15-30 seconds
         self._demand_timer += dt
@@ -116,14 +115,14 @@ class CascadeStage:
 
             # Outlet temperature
             self.outlet_temp = max(self.t_process_req + 2.0,
-                                   inlet_temperature - actual_dt)
+                                inlet_temperature - actual_dt)
             self.outlet_temp = min(self.outlet_temp, inlet_temperature - 0.5)
 
             # Process outlet temperature (with slight random deviation)
             process_deviation   = random.uniform(-1.5, 1.5)
             self.process_outlet = max(self.t_process_req - 2.0,
-                                      min(self.t_process_req + 5.0,
-                                          self.t_process_req + process_deviation))
+                                    min(self.t_process_req + 5.0,
+                                        self.t_process_req + process_deviation))
 
             # Heat duty: Q = m_dot * Cp * dT  (kW)
             m_dot_kg_s        = self.flow_rate_kg_h / 3600.0
@@ -142,7 +141,7 @@ class CascadeStage:
             self.flow_velocity = m_dot_kg_s / (850.0 * area)
 
         else:
-            # No flow — pass-through, no heat transfer
+            # No flow — no heat transfer
             self.outlet_temp    = inlet_temperature
             self.process_outlet = inlet_temperature
             self.heat_duty_kw   = 0.0
@@ -152,6 +151,8 @@ class CascadeStage:
 
         self._update_sensor_status()
 
+# #
+    
     def _update_sensor_status(self):
         if self.flow_rate_kg_h < 1.0:
             self.sensor_status = SensorStatus.CRITICAL_LOW

@@ -1,6 +1,6 @@
 """
 Main HMI Window – Geothermal Direct Use SCADA Simulator
-PT Geo Dipa Energy (Persero) – Patuha Unit
+PT Geo Dipa Energi (Persero) – Patuha Unit
 
 Layout:
 ┌────────────────────────────────────────────────────────────────────┐
@@ -117,7 +117,7 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self):
         self.setWindowTitle(
-            "Geothermal Direct Use SCADA — PT Geo Dipa Energy (Persero) – Patuha")
+            "Geothermal Direct Use SCADA — PT Geo Dipa Energi (Persero) – Patuha")
         self.setGeometry(50, 30, 1440, 840)
         self.setMinimumSize(1100, 700)
 
@@ -209,7 +209,7 @@ class MainWindow(QMainWindow):
 
         # Title
         self._hdr_title = QLabel(
-            "PT GEO DIPA ENERGY  |  GEOTHERMAL SCADA  |  Direct Use HMI  |  Patuha")
+            "PT GEO DIPA ENERGI  |  GEOTHERMAL SCADA  |  Direct Use HMI  |  Patuha")
         self._hdr_title.setStyleSheet(
             "color:#7ab0e0; font-size:10pt; font-weight:bold; letter-spacing:1px;")
         layout.addWidget(self._hdr_title)

@@ -124,13 +124,13 @@ class CascadePIDManager:
 
     # Default outlet temperature setpoints  (°C)
     _SETPOINTS: dict = {
-        'cabin':             32.0,
-        'hot_pool':          40.0,
-        'tea_dryer':         60.0,
-        'food_dehydrator_1': 50.0,
-        'fish_pond':         29.0,
-        'food_dehydrator_2': 50.0,
-        'green_house':       24.5,   
+        'cabin':             45.0,   # ~45°C estimated
+        'hot_pool':          38.0,   # ~38°C estimated
+        'tea_dryer':         96.0,   # 95-98°C
+        'food_dehydrator_1': 54.0,   # 53-56°C
+        'fish_pond':         27.0,   # 24-30°C
+        'food_dehydrator_2': 54.0,   # 53-56°C
+        'green_house':       23.0,   # 21-26°C
     }
 
     def __init__(self):
